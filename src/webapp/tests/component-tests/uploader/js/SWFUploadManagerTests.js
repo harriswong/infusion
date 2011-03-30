@@ -112,5 +112,20 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
             checkTransparentSettings(config);
         });
         
+        swfUploadSetupTests.test("remote Test server responses", function () {
+            var swfUpload = {};
+            swfUpload.testStartUpload = false;
+            swfUpload.startUpload = function () {
+                swfUpload.testStartUpload = true;
+            };
+            var queue = {shouldStop: false};
+            remote = fluid.uploader.swfUploadStrategy.remote(swfUpload, queue, fluid.COMPONENT_OPTIONS);
+            jqUnit.assertEquals("The swfUpload should be set", remote.swfUpload, swfUpload);
+            jqUnit.assertEquals("The queue should be set", remote.queue, defaultQueueSettings);
+            remote.uploadNextFile();
+            jqUnit.assertTrue("Test uploadNextFile with custom startUpload()", remote.swfUpload.testStartUpload);
+            remote.stop();
+            jqUnit.assertTrue("Stopping the queue with custom queueStop()", remote.queue.shouldStop);
+        });
     });
 })(jQuery);
