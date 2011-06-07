@@ -45,6 +45,40 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
             tt.container.tooltip("destroy");
         });
         
+        tooltipTests.test("Content option with title attribute", function () {
+            // Relates to FLUID-3909
+            var testOptionsWithContent = {
+                content: function () {
+                    return "Tooltip";
+                }
+            };
+            var testOptionsWithEmptyContent = {
+                content: function () {
+                    return "";
+                }
+            };
+            var testOptionsWithNullContent = {
+                content: function () {
+                    return null;
+                }
+            };
+            var testOptionsWithNull = {
+                content: null
+            };
+            
+            var titleExistanceCheck = function (option, str) {
+                var tt = fluid.tooltip(".testTooltip", option);
+                jqUnit.assertTrue("The title attribute should not exist by adding tooltip, with this content option - " + str, $(".testTooltip").attr('title'));
+                tt.container.tooltip("destroy");
+            }
+            
+            //run all content options
+            titleExistanceCheck(testOptionsWithContent, "returns normal string");
+            titleExistanceCheck(testOptionsWithEmptyContent, "returns empty string");
+            titleExistanceCheck(testOptionsWithNullContent, "returns null");
+            titleExistanceCheck(testOptionsWithNull, "content itself is null");
+        });
+        
         tooltipTests.test("Stlying added", function () {
             var style = "styleClass";
             var tt = fluid.tooltip(".testTooltip", {
