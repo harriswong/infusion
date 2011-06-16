@@ -19,158 +19,273 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 var fluid_1_4 = fluid_1_4 || {};
 
 (function ($, fluid) {
-
-    /*
-     *  TODO: 
-     *  - get and implement a design for the table of contents 
-     *  - make the toc template pluggable
-     *  - make sure getting headings using something other then a selector works
-     *  - move interesting parts of the template to the defaults ie. link
-     */ 
     
-
-    /**
-     * Inserts an anchor into the page in front of the element.
-     * @param {Object} el
-     */    
-    var insertAnchor = function (el) {
-        var a = $("<a name='" + el.text() + "' />", el[0].ownerDocument);
-        el.before(a);
+    /******
+    * ToC *
+    *******/
+    fluid.registerNamespace("fluid.tableOfContents");
+    
+    fluid.tableOfContents.insertAnchor = function (name, element) {
+        $("<a></a>", {
+            name: name,
+            id: name
+        }).insertBefore(element);
     };
     
-    /**
-     * Creates a generic tree node
-     */
-    var createNode = function (id) {
-        var node = {
-            ID: id,
-            children: []
-        };
-        return node;
+    fluid.tableOfContents.generateGUID = function (baseName) {
+        return "toc_" + baseName + "_" + fluid.allocateGuid();
     };
-
-    /**
-     * Creates the renderer tree that matches the table of contents template
-     * @param {jQuery Object} headings - the headings to be put into the table of contents
-     */
-    var createTree = function (headings, levels) {
+    
+    fluid.tableOfContents.sanitizeID = function (id) {
+        return id.replace(/\W/g, "-");
+    };
+    
+    fluid.tableOfContents.finalInit = function (that) {
+        var headings = that.locate("headings");
         
-        // Builds the tree recursively 
-        var generateTree = function (nodes, items, level) {
-            if (items.length === 0) {
-                return;
-            }
+        that.headingTextToAnchor = function (heading) {
+            var baseName = $(heading).text();
+            var guid = that.sanitizeID(that.generateGUID(baseName));
             
-            var item = items[0];
+            var anchorInfo = {
+                id: guid,
+                url: "#" + guid
+            };
             
-            if (level === item.level) {
-                nodes[nodes.length - 1].push(item.leaf);
-                items.shift();
-                return generateTree(nodes, items, level);
-            }
-            
-            if (level < item.level) {
-                var prefix = level > -1 ? "level" + (level + 1) + ":" : "";
-                var postfix = level === -1 ? "s:" : "s";
-                var name = prefix + "level" + (level + 2) + postfix;
-                var myNode = createNode(name);
-                nodes[nodes.length - 1].push(myNode);
-                nodes.push(myNode.children);
-                return generateTree(nodes, items, level + 1);
-            }
-            
-            if (level > item.level) {
-                nodes.pop();
-                return generateTree(nodes, items, level - 1);
-            }
-        };
-
-        var tree = {
-            children: []
+            that.insertAnchor(anchorInfo.id, heading);
+            return anchorInfo;
         };
         
-        // Leaf nodes for the renderer tree from the headings
-        var items = fluid.transform(headings, function (heading) {
-                var level = $.inArray(heading.tagName, levels);
-                var text = $(heading).text();
-                return {
-                    level: level,
-                    leaf: {
-                        ID: "level" + (level + 1) + ":item",
-                        children: [{
-                            ID: "link",
-                            linktext: text,
-                            target: "#" + text
-                        }]
+        that.anchorInfo = fluid.transform(headings, function (heading) {
+            return that.headingTextToAnchor(heading);
+        });
+        
+        that.model = that.modelBuilder.assembleModel(headings, that.anchorInfo);
+        that.events.onReady.fire();
+    };
+    
+    
+    fluid.defaults("fluid.tableOfContents", {
+        gradeNames: ["fluid.viewComponent", "autoInit"],
+        finalInitFunction: "fluid.tableOfContents.finalInit",
+        components: {
+            levels: {
+                type: "fluid.tableOfContents.levels",
+                container: "{tableOfContents}.dom.tocContainer",
+                createOnEvent: "onReady",
+                options: {
+                    model: {
+                        headings: "{tableOfContents}.model"
                     }
+                }
+            },
+            modelBuilder: {
+                type: "fluid.tableOfContents.modelBuilder"
+            }
+        },
+        invokers: {
+            insertAnchor: "fluid.tableOfContents.insertAnchor",
+            generateGUID: "fluid.tableOfContents.generateGUID",
+            sanitizeID: "fluid.tableOfContents.sanitizeID"
+        },
+        selectors: {
+            headings: ":header",
+            tocContainer: ".flc-toc-tocContainer"
+        },
+        events: {
+            onReady: null,
+            afterRender: null
+        }
+    });
+    
+    fluid.demands("fluid.tableOfContents.levels", "fluid.tableOfContents", {
+        options: {
+            events: {
+                afterRender: "{tableOfContents}.events.afterRender"
+            }
+        }
+    });
+    
+    /*******************
+    * ToC ModelBuilder *
+    ********************/
+    fluid.registerNamespace("fluid.tableOfContents.modelBuilder");
+    
+    fluid.tableOfContents.modelBuilder.toModel = function (headingInfo) {
+        var headings = fluid.copy(headingInfo);
+        
+        var buildModelLevel = function (headings, level) {
+            var modelLevel = [];
+            
+            while (headings.length > 0) {
+                var heading = headings[0];
+                if (heading.level < level) {
+                    break;
+                }
+                
+                if (heading.level > level) {
+                    var subHeadings = buildModelLevel(headings, level + 1);
+                    
+                    if (modelLevel.length > 0) {
+                        modelLevel[modelLevel.length - 1].headings = subHeadings;
+                    } else {
+                        modelLevel.push({headings: subHeadings});
+                    }
+                }
+                
+                if (heading.level === level) {
+                    modelLevel.push(heading);
+                    headings.shift();
+                }
+            }
+            
+            return modelLevel;
+        };
+        
+        return buildModelLevel(headings, 1);
+    };
+    
+    fluid.tableOfContents.modelBuilder.finalInit = function (that) {
+        
+        that.convertToHeadingObjects = function (headings, anchorInfo) {
+            headings = $(headings);
+            return fluid.transform(headings, function (heading, index) {
+                return {
+                    level: that.headingCalculator.getHeadingLevel(heading),
+                    text: $(heading).text(),
+                    url: anchorInfo[index].url
                 };
             });
-
-        generateTree([tree.children], items, -1);
+        };
+        
+        that.assembleModel = function (headings, anchorInfo) {
+            var headingInfo = that.convertToHeadingObjects(headings, anchorInfo);
+            return that.toModel(headingInfo);
+        };
+    };
+    
+    fluid.defaults("fluid.tableOfContents.modelBuilder", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+        finalInitFunction: "fluid.tableOfContents.modelBuilder.finalInit",
+        components: {
+            headingCalculator: {
+                type: "fluid.tableOfContents.modelBuilder.headingCalculator"
+            }
+        },
+        invokers: {
+            toModel: "fluid.tableOfContents.modelBuilder.toModel"
+        }
+    });
+    
+    /*************************************
+    * ToC ModelBuilder headingCalculator *
+    **************************************/
+    fluid.registerNamespace("fluid.tableOfContents.modelBuilder.headingCalculator");
+    
+    fluid.tableOfContents.modelBuilder.headingCalculator.finalInit = function (that) {
+        that.getHeadingLevel = function (heading) {
+            return $.inArray(heading.tagName, that.options.levels) + 1;
+        };
+    };
+    
+    fluid.defaults("fluid.tableOfContents.modelBuilder.headingCalculator", {
+        gradeNames: ["fluid.littleComponent", "autoInit"],
+        finalInitFunction: "fluid.tableOfContents.modelBuilder.headingCalculator.finalInit",
+        levels: ["H1", "H2", "H3", "H4", "H5", "H6"]
+    });
+    
+    /*************
+    * ToC Levels *
+    **************/
+    fluid.registerNamespace("fluid.tableOfContents.levels");
+    
+    fluid.tableOfContents.levels.finalInit = function (that) {
+        fluid.fetchResources(that.options.resources, function () {
+            that.container.append(that.options.resources.template.resourceText);
+            that.refreshView();
+        });        
+    };
+    
+    // The current state of this tree generation code is a result of missing framework supports.
+    // In the future it is envisioned that it will be greatly simplified through the use of antigens.
+    // See FLUID-4261: http://issues.fluidproject.org/browse/FLUID-4261
+    fluid.tableOfContents.levels.generateTree = function (startLevel, endLevel) {
+        var tree = {};
+        var componentID = "level" + startLevel;
+        var parentLevel = startLevel - 1;
+        var childLevel = startLevel + 1;
+        var controlledBy = (parentLevel ? "{headingPath" + parentLevel + "}." : "") + "headings";
+        var value = "headingValue" + startLevel;
+        var path = "headingPath" + startLevel;
+        
+        tree[componentID] = {
+            children: [
+                {
+                    expander: {
+                        type: "fluid.renderer.repeat",
+                        repeatID: "items:",
+                        controlledBy: controlledBy,
+                        valueAs: value,
+                        pathAs: path,
+                        tree: {
+                            expander: [
+                                {
+                                    type: "fluid.renderer.condition",
+                                    condition: "{" + value + "}.text",
+                                    trueTree: {
+                                        link: {
+                                            target: "${{" + path + "}.url}",
+                                            linktext: "${{" + path + "}.text}"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        };
+        
+        if (childLevel <= endLevel) {
+            tree[componentID].children[0].expander.tree.expander.push({
+                type: "fluid.renderer.condition",
+                condition: "{" + value + "}.headings",
+                trueTree: fluid.tableOfContents.levels.generateTree(childLevel, endLevel)
+            });
+        }
         
         return tree;
     };
-    
-    var buildTOC = function (container, headings, levels, templateURL, afterRender) {
-        // Insert anchors into the page that the table of contents will link to
-        headings.each(function (i, el) {
-            insertAnchor($(el));
-        });
-        
-        // Data structure needed by fetchResources
-        var resources = {
-            toc: {
-                href: templateURL
-            }
-        };
-        
-        // Get the template, create the tree and render the table of contents
-        fluid.fetchResources(resources, function () {
-            var templates = fluid.parseTemplates(resources, ["toc"], {});
-            var node = $("<div></div>", container[0].ownerDocument);
-            fluid.reRender(templates, node, createTree(headings, levels), {});
-            container.prepend(node);
-            afterRender.fire(node);
-        });
+ 
+    fluid.tableOfContents.levels.produceTree = function (that) {
+        return fluid.tableOfContents.levels.generateTree(1, that.options.maxLevel);
     };
-
-    fluid.tableOfContents = function (container, options) {
-        var that = fluid.initView("fluid.tableOfContents", container, options);
-
-        // TODO: need better name for tocNode. and node, while you're at it. 
-        //       also, should the DOM be exposed in this way? Is there a better way to handle this?
-        that.events.afterRender.addListener(function (node) {
-            that.tocNode = $(node);
-        });
-
-        buildTOC(that.container, that.locate("headings"), that.options.levels, that.options.templateUrl, that.events.afterRender);
-
-        // TODO: is it weird to have hide and show on a component? 
-        that.hide = function () {
-            if (that.tocNode) {
-                that.tocNode.hide();
-            }
-        };
-        
-        that.show = function () {
-            if (that.tocNode) {
-                that.tocNode.show();
-            }
-        };
-
-        return that;
-    };
-    
-    fluid.defaults("fluid.tableOfContents", {
-        gradeNames: "fluid.viewComponent",
+     
+    fluid.defaults("fluid.tableOfContents.levels", {
+        gradeNames: ["fluid.rendererComponent", "autoInit"],
+        finalInitFunction: "fluid.tableOfContents.levels.finalInit",
+        produceTree: "fluid.tableOfContents.levels.produceTree",
         selectors: {
-            headings: ":header"
+            level1: ".flc-toc-levels-level1",
+            level2: ".flc-toc-levels-level2",
+            level3: ".flc-toc-levels-level3",
+            level4: ".flc-toc-levels-level4",
+            level5: ".flc-toc-levels-level5",
+            level6: ".flc-toc-levels-level6",
+            items: ".flc-toc-levels-items",
+            link: ".flc-toc-levels-link"
         },
-        events: {
-            afterRender: null
+        repeatingSelectors: ["level1", "level2", "level3", "level4", "level5", "level6", "items"],
+        model: {
+            headings: [] // [text: heading, url: linkURL, headings: [ an array of subheadings in the same format]
         },
-        templateUrl: "../html/TableOfContents.html",
-        levels: ["H1", "H2", "H3", "H4", "H5", "H6"]
+        maxLevel: 6, // look into calculating this programattically.
+        resources: {
+            template: {
+                forceCache: true,
+                url: "../html/TableOfContents.html"
+            }
+        }
     });
 
 })(jQuery, fluid_1_4);
