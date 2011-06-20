@@ -60,6 +60,19 @@ var fluid_1_4 = fluid_1_4 || {};
             return that.headingTextToAnchor(heading);
         });
         
+        // TODO: is it weird to have hide and show on a component?
+        that.hide = function () {
+            if (that.tocContainer) {
+                that.tocContainer.hide();
+            }
+        };
+        
+        that.show = function () {
+            if (that.tocContainer) {
+                that.tocContainer.show();
+            }
+        };
+        
         that.model = that.modelBuilder.assembleModel(headings, that.anchorInfo);
         that.events.onReady.fire();
     };
@@ -76,6 +89,9 @@ var fluid_1_4 = fluid_1_4 || {};
                 options: {
                     model: {
                         headings: "{tableOfContents}.model"
+                    }, 
+                    events: {
+                        afterRender: "{tableOfContents}.events.afterRender"
                     }
                 }
             },
@@ -98,13 +114,6 @@ var fluid_1_4 = fluid_1_4 || {};
         }
     });
     
-    fluid.demands("fluid.tableOfContents.levels", "fluid.tableOfContents", {
-        options: {
-            events: {
-                afterRender: "{tableOfContents}.events.afterRender"
-            }
-        }
-    });
     
     /*******************
     * ToC ModelBuilder *

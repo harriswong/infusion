@@ -105,6 +105,15 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         }
     });
     
+    fluid.tableOfContents.generateGUIDMock = function (baseName) {
+        return 'test' + baseName;
+    };
+    
+    // Use our custom GUID for testing purposes.
+    fluid.demands("fluid.tableOfContents.generateGUID", "fluid.tableOfContents", {
+        funcName: 'fluid.tableOfContents.generateGUIDMock'
+    });
+    
     var skippedHeadings = {
         headingTags: ["h1", "h6"],
         anchorInfo: [{url: "#h1"}, {url: "#h6"}],
@@ -308,9 +317,8 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
             jqUnit.assertEquals("ToC text set correctly", fluid.get(hInfo, "text"), elm.text());
             jqUnit.assertEquals("ToC anchor set correctly", fluid.get(hInfo, "url"), elm.attr("href"));
         });
-        start();
     };
-    
+       
     var renderTOCTests = function (testHeadings) {
         var container = $(".flc-toc-tocContainer");
         var renderedTOC = fluid.tableOfContents.levels(container, {
@@ -320,6 +328,7 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
             listeners: {
                 afterRender: function (that) {
                     renderTOCTest(that, testHeadings);
+                    start();
                 }
             },
             resources: {
@@ -334,8 +343,8 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
     /**
      * Returns a ToC Component with the predefined demand block
      */
-    var renderTOCComponent = function () {
-        return fluid.tableOfContents("#flc-toc");
+    var renderTOCComponent = function (options) {
+        return fluid.tableOfContents("#flc-toc", options);
     };
 
     $(document).ready(function () {
@@ -431,45 +440,56 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
             
             // test goes here
             jqUnit.assertNotEquals("Basename should be reserved in the generated anchor", -1, anchorInfo.id.indexOf(baseName));
-            jqUnit.assertEquals("anchor url is the same as id except url has a '#' in front", anchorInfo.url, '#' + anchorInfo.id);
+            jqUnit.assertEquals("anchor url is the same as id except url has a '#' in front", anchorInfo.url.substr(1), anchorInfo.id);
         });
         
-        
-        // macro to serialize heading elements, level, text, url into Object form.
-        var serializeHeading = function (level, text, url) {
-            return {'level': level, 'text': text, 'url' : url};
+        tocTests.test("finalInit public function: show/hide component", function () {
+            
+        });
+            
+        /**
+          * Test anchor links created by TOC.  Check if the heading table a href link maps to the correct header
+          * @precondition   Must be rendered
+          */
+        var renderTOCAnchorTest = function () {
+            var anchorLinks = $('.flc-toc-levels-link');
+            anchorLinks.each(function (anchorIndex, anchorValue) {
+                var anchorHref = anchorLinks.eq(anchorIndex).attr('href');
+                jqUnit.assertTrue("Component test headings: TOC anchors should map to the headers correctly - " + anchorHref, $(anchorHref)[0]);
+            });
         };
         
-        /** 
-         * convert tocComponent.levels.model to headings for "Component test heading"
-         * This function converts multi-level model back to linear array.
-         * @param   Array   Stores the {level, text, url} objects
-         * @param   Object  contains headings information
-         */
-        var convertModelToHeadings = function (resultHeadings, headings) {
-            // loop through all the nodes on this level.
-            for (var i = 0; i < headings.length; i++) {
-                heading = headings[i];
-                // store level, text, url if and only if it exists.
-                if (heading.level !== undefined && heading.text !== undefined && heading.url !== undefined) {
-                    resultHeadings.push(serializeHeading(heading.level, heading.text, heading.url));
-                }
-                // recursively goes into the model as long as there is heading defined
-                if (heading.headings !== undefined) {
-                    convertModelToHeadings(resultHeadings, heading.headings);
-                }
-            }
-            return resultHeadings;
-        }; 
         /**
          * Test component and make sure the number of links, text and anchors are set correctly.
          */
         tocTests.asyncTest("Component test headings", function () {
-            var tocComponent = renderTOCComponent();
-            componentHeadings = tocComponent;
-            // craft headingInfo and headerTags so renderTOCTest() can use it
-            componentHeadings.headingInfo = convertModelToHeadings([], tocComponent.model);
-            componentHeadings.headerTags = $('#flc-toc :header');
+            // craft headingInfo so renderTOCTest() can use it
+            var testHeadings = {
+                    headingInfo : []
+                };
+            var headings = $('#flc-toc').children(':header');
+            var serializeHeading = function (level, text, url) {
+                // macro to serialize heading elements, level, text, url into Object form.
+                return {'level': level, 'text': text, 'url' : url};
+            };
+            headings.each(function (headingsIndex, headingsInfo) {
+                var currLink = headings.eq(headingsIndex);
+                testHeadings.headingInfo.push(serializeHeading(
+                    currLink.prop('tagName').substr(-1), 
+                    currLink.text(), 
+                    '#test' + fluid.tableOfContents.sanitizeID(currLink.text())
+                ));
+            });
+            var tocComponent = renderTOCComponent({
+                listeners: {
+                    afterRender: function (that) {
+                        renderTOCTest(that, testHeadings);
+                        renderTOCAnchorTest();
+                        start();
+                    }
+                },
+            });
+            
             /*
             * the following is to demonstrated what the headingInfo should be like
             * should remove this once code reviewed.
@@ -487,7 +507,6 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
                 {level: 3, text: "CATT", url: "#toc_CATT_23"}
             ];
             */
-            renderTOCTests(componentHeadings);
         });
     });
 })(jQuery);
