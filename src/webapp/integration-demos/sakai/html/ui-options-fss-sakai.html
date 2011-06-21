@@ -71,6 +71,9 @@
             <a href="#_bottom" class="flc-slidingPanel-toggleButton skin_ fl-linearEnabled"></a>
         </div>
         
+        <div class="flc-toc-tocContainer toc">
+        </div>
+
         <div class="header fl-knockout">
             <h1>My Dashboard</h1>
             <p>Joe Instructor </p>
@@ -257,10 +260,15 @@
                 }
             });
         
-            // table of contents' template
-            fluid.demands("fluid.tableOfContents", ["fluid.uiEnhancer"], {
+            // Supply the table of contents' template URL
+            fluid.demands("fluid.tableOfContents.levels", ["fluid.tableOfContents", "fluid.FssSakaiUIOptions"], {
                 options: {
-                    templateUrl: "../../../components/tableOfContents/html/TableOfContents.html"
+                    resources: {
+                        template: {
+                            forceCache: true,
+                            url: "../../../components/tableOfContents/html/TableOfContents.html"
+                        }
+                    }
                 }
             });
 

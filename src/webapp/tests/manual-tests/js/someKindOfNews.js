@@ -22,16 +22,21 @@ var skon = skon || {};
 
     /* Our demo script */   
     skon.slidingUIOptions = function (panel, uioptions) {
-        fluid.demands("fluid.uiOptionsTemplateLoader", [ "skon.demo"], {
+        fluid.demands("fluid.uiOptionsTemplateLoader", ["skon.demo"], {
             options: {
                 prefix: "../../../components/uiOptions/html/"
             }
         });
 
         // Supply the table of contents' template URL
-        fluid.demands("fluid.tableOfContents", ["fluid.uiEnhancer", "skon.demo"], {
+        fluid.demands("fluid.tableOfContents.levels", ["fluid.tableOfContents", "skon.demo"], {
             options: {
-                templateUrl: "../../../components/tableOfContents/html/TableOfContents.html"
+                resources: {
+                    template: {
+                        forceCache: true,
+                        url: "../../../components/tableOfContents/html/TableOfContents.html"
+                    }
+                }
             }
         });
 

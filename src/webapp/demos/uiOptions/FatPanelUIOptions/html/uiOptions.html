@@ -74,6 +74,9 @@
 			</div>
 		</div>	
         
+        <div class="flc-toc-tocContainer toc">
+        </div>
+
 		<div id="main">    
 			<h1>Some Sample Title</h1>
 			<p>Some content with <a id="myLink">a link</a> and <button>a button</button>. </p>
@@ -90,9 +93,14 @@
                 });
             
                 // Supply the table of contents' template URL
-                fluid.demands("fluid.tableOfContents", ["fluid.uiEnhancer"], {
+                fluid.demands("fluid.tableOfContents.levels", ["fluid.tableOfContents", "fluid.uiOptionsDemo"], {
                     options: {
-                        templateUrl: "../../../../components/tableOfContents/html/TableOfContents.html"
+                        resources: {
+                            template: {
+                                forceCache: true,
+                                url: "../../../../components/tableOfContents/html/TableOfContents.html"
+                            }
+                        }
                     }
                 });
 
