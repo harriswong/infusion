@@ -431,12 +431,22 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
             tocTest('i18n', 'I-t-rn-ti-n-liz-ti-n', 'Iñtërnâtiônàlizætiøn');
         });
         
+        tocTests.test("filterHeadings", function () {
+            var allHeadings = $('#tocFilterHeadings :header');
+            var expectedHeadings = allHeadings.not(":hidden"); 
+            var filteredHeadings = fluid.tableOfContents.filterHeadings(allHeadings);
+            jqUnit.assertEquals("The size of headings should be exactly 1 less from the original", allHeadings.size() - 1, filteredHeadings.size());
+            jqUnit.assertEquals("The size of headings should be exactly the same as a sliced clone of the original", expectedHeadings.size(), filteredHeadings.size());
+            jqUnit.assertDeepEq("The headings object array should be identical between the filtered headings and the sliced clone", 
+                expectedHeadings.toArray(), filteredHeadings.toArray());
+        });
+        
         tocTests.test("finalInit public function: headingTextToAnchor", function () {
             // setup and init the ToC component
-            var tocBody = renderTOCComponent();
+            var toc = renderTOCComponent();
             var tocBodyHeading = $('#amphibians');
             var baseName = tocBodyHeading.text();
-            var anchorInfo = tocBody.headingTextToAnchor(tocBodyHeading);
+            var anchorInfo = toc.headingTextToAnchor(tocBodyHeading);
             
             // test goes here
             jqUnit.assertNotEquals("Basename should be reserved in the generated anchor", -1, anchorInfo.id.indexOf(baseName));
@@ -444,7 +454,15 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         });
         
         tocTests.test("finalInit public function: show/hide component", function () {
-            
+            //setup and init the ToC component
+            var tocContainer = renderTOCComponent().locate("tocContainer");
+            jqUnit.isVisible("Initially the component is visible.", tocContainer);
+            tocContainer.hide();
+            //verify toc is hidden.
+            jqUnit.notVisible("After calling hide, the component is invisible.", tocContainer);
+            tocContainer.show();
+            //verify toc is visible again
+            jqUnit.isVisible("After calling show, the component is visible.", tocContainer);
         });
             
         /**
