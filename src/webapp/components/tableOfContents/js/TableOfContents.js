@@ -1,6 +1,5 @@
 /*
-Copyright 2009 University of Cambridge
-Copyright 2009 University of Toronto
+Copyright 2011 OCAD University
 
 Licensed under the Educational Community License (ECL), Version 2.0 or the New
 BSD license. You may not use this file except in compliance with one these
@@ -126,38 +125,44 @@ var fluid_1_4 = fluid_1_4 || {};
     ********************/
     fluid.registerNamespace("fluid.tableOfContents.modelBuilder");
     
-    fluid.tableOfContents.modelBuilder.toModel = function (headingInfo) {
+    fluid.tableOfContents.modelBuilder.toModel = function (headingInfo, modelLevelFn) {
         var headings = fluid.copy(headingInfo);
-        
         var buildModelLevel = function (headings, level) {
             var modelLevel = [];
-            
             while (headings.length > 0) {
                 var heading = headings[0];
                 if (heading.level < level) {
                     break;
                 }
-                
                 if (heading.level > level) {
                     var subHeadings = buildModelLevel(headings, level + 1);
-                    
                     if (modelLevel.length > 0) {
                         modelLevel[modelLevel.length - 1].headings = subHeadings;
                     } else {
-                        modelLevel.push({headings: subHeadings});
+                        modelLevel = modelLevelFn(modelLevel, subHeadings);
                     }
                 }
-                
                 if (heading.level === level) {
-                    modelLevel.push(heading);
+                    modelLevel.push(heading); 
                     headings.shift();
                 }
             }
-            
             return modelLevel;
         };
-        
         return buildModelLevel(headings, 1);
+    };
+       
+    fluid.tableOfContents.modelBuilder.gradualModelLevelFn = function (modelLevel, subHeadings) {
+        // Clone the subHeadings because we don't want to modify the reference of the subHeadings.  
+        // the reference will affect the equality condition in generateTree(), resulting an unwanted tree.
+        var subHeadingsClone = fluid.copy(subHeadings);
+        subHeadingsClone[0].level--;
+        return subHeadingsClone;
+    };
+
+    fluid.tableOfContents.modelBuilder.skippedModelLevelFn = function (modelLevel, subHeadings) {
+        modelLevel.push({headings: subHeadings});
+        return modelLevel;
     };
     
     fluid.tableOfContents.modelBuilder.finalInit = function (that) {
@@ -188,7 +193,11 @@ var fluid_1_4 = fluid_1_4 || {};
             }
         },
         invokers: {
-            toModel: "fluid.tableOfContents.modelBuilder.toModel"
+            toModel: {
+                funcName: "fluid.tableOfContents.modelBuilder.toModel",
+                args: ["{arguments}.0", "{modelBuilder}.modelLevelFn"]
+            },
+            modelLevelFn: "fluid.tableOfContents.modelBuilder.skippedModelLevelFn"
         }
     });
     
@@ -220,60 +229,82 @@ var fluid_1_4 = fluid_1_4 || {};
             that.refreshView();
         });        
     };
-    
-    // The current state of this tree generation code is a result of missing framework supports.
-    // In the future it is envisioned that it will be greatly simplified through the use of antigens.
-    // See FLUID-4261: http://issues.fluidproject.org/browse/FLUID-4261
-    fluid.tableOfContents.levels.generateTree = function (startLevel, endLevel) {
-        var tree = {};
-        var componentID = "level" + startLevel;
-        var parentLevel = startLevel - 1;
-        var childLevel = startLevel + 1;
-        var controlledBy = (parentLevel ? "{headingPath" + parentLevel + "}." : "") + "headings";
-        var value = "headingValue" + startLevel;
-        var path = "headingPath" + startLevel;
-        
-        tree[componentID] = {
-            children: [
-                {
-                    expander: {
-                        type: "fluid.renderer.repeat",
-                        repeatID: "items:",
-                        controlledBy: controlledBy,
-                        valueAs: value,
-                        pathAs: path,
-                        tree: {
-                            expander: [
-                                {
-                                    type: "fluid.renderer.condition",
-                                    condition: "{" + value + "}.text",
-                                    trueTree: {
-                                        link: {
-                                            target: "${{" + path + "}.url}",
-                                            linktext: "${{" + path + "}.text}"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            ]
+
+    /**
+     * Create an object model based on the type and ID.  The object should contain an
+     * ID that maps the selectors (ie. level1:), and the object should contain a children
+     * @param   string      Accepted values are: level, items
+     * @param   int         The current level which is used here as the ID.
+     */
+    fluid.tableOfContents.levels.objModel = function (type, ID) {
+        var objModel = {
+            ID: type + ID + ":",
+            children: []
         };
+        return objModel;
+    };
+    
+    /** 
+     * Configure item object when item object has no text, uri, level in it.
+     * defaults to add a decorator to hide the bullets.
+     */
+    fluid.tableOfContents.levels.handleEmptyItemObj = function (itemObj) {
+        itemObj.decorators = [{
+            type: "addClass",
+            classes: "fl-tableOfContents-hide-bullet"
+        }];
+    };
+    
+    /**
+     * @param   Object  that.model, the model with all the headings, it should be in the format of {headings: [...]}
+     * @param   int     the current level we want to generate the tree for.  default to 1 if not defined.
+     * @return  Object  A tree that looks like {children: [{ID: x, subTree:[...]}, ...]}
+     */
+    fluid.tableOfContents.levels.generateTree = function (headingsModel, currentLevel) {
+        currentLevel = currentLevel || 0;
+        var levelObj = fluid.tableOfContents.levels.objModel("level", currentLevel);
         
-        if (childLevel <= endLevel) {
-            tree[componentID].children[0].expander.tree.expander.push({
-                type: "fluid.renderer.condition",
-                condition: "{" + value + "}.headings",
-                trueTree: fluid.tableOfContents.levels.generateTree(childLevel, endLevel)
-            });
+        // base case: level is 0, returns {children:[generateTree(nextLevel)]}
+        // purpose is to wrap the first level with a children object.
+        if (currentLevel === 0) {
+            var tree = {
+                children: [
+                    fluid.tableOfContents.levels.generateTree(headingsModel, currentLevel + 1)
+                ]
+            };
+            return tree;
         }
         
-        return tree;
+        // Loop through the heading array, which can have multiple headings on the same level
+        $.each(headingsModel.headings, function (index, model) {
+            var itemObj = fluid.tableOfContents.levels.objModel("items", currentLevel);
+            var linkObj = {
+                ID: "link" + currentLevel,
+                target: model.url,
+                linktext: model.text
+            };
+            
+            // If level is undefined, then add decorator to it, otherwise add the links to it.
+            if (!model.level) {
+                fluid.tableOfContents.levels.handleEmptyItemObj(itemObj);
+            } else {
+                itemObj.children.push(linkObj);
+            }
+            // If there are sub-headings, go into the next level recursively
+            if (model.headings) {
+                itemObj.children.push(fluid.tableOfContents.levels.generateTree(model, currentLevel + 1));
+            }
+            // At this point, the itemObj should be in a tree format with sub-headings children
+            levelObj.children.push(itemObj);
+        });
+        return levelObj;
     };
- 
+    
+    /** 
+     * @return  Object  Returned produceTree must be in {headings: [trees]}
+     */
     fluid.tableOfContents.levels.produceTree = function (that) {
-        return fluid.tableOfContents.levels.generateTree(1, that.options.maxLevel);
+        return fluid.tableOfContents.levels.generateTree(that.model);
     };
      
     fluid.defaults("fluid.tableOfContents.levels", {
@@ -287,20 +318,36 @@ var fluid_1_4 = fluid_1_4 || {};
             level4: ".flc-toc-levels-level4",
             level5: ".flc-toc-levels-level5",
             level6: ".flc-toc-levels-level6",
-            items: ".flc-toc-levels-items",
-            link: ".flc-toc-levels-link"
+            items1: ".flc-toc-levels-items1",
+            items2: ".flc-toc-levels-items2",
+            items3: ".flc-toc-levels-items3",
+            items4: ".flc-toc-levels-items4",
+            items5: ".flc-toc-levels-items5",
+            items6: ".flc-toc-levels-items6",
+            link1: ".flc-toc-levels-link1",
+            link2: ".flc-toc-levels-link2",
+            link3: ".flc-toc-levels-link3",
+            link4: ".flc-toc-levels-link4",
+            link5: ".flc-toc-levels-link5",
+            link6: ".flc-toc-levels-link6"            
         },
-        repeatingSelectors: ["level1", "level2", "level3", "level4", "level5", "level6", "items"],
+        repeatingSelectors: ["level1", "level2", "level3", "level4", "level5", "level6", "items1", "items2", "items3", "items4", "items5", "items6"],
         model: {
             headings: [] // [text: heading, url: linkURL, headings: [ an array of subheadings in the same format]
         },
-        maxLevel: 6, // look into calculating this programattically.
         resources: {
             template: {
                 forceCache: true,
                 url: "../html/TableOfContents.html"
             }
+        }, 
+        rendererFnOptions: {
+            noexpand: true
+        },
+        rendererOptions: {
+            debugMode: false
         }
+
     });
 
 })(jQuery, fluid_1_4);

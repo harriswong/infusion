@@ -1,5 +1,5 @@
 /*
-Copyright 2009-2010 University of Toronto
+Copyright 2011 OCAD University
 
 Licensed under the Educational Community License (ECL), Version 2.0 or the New
 BSD license. You may not use this file except in compliance with one these
@@ -10,88 +10,12 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 */
 
 // Declare dependencies
-/*global fluid, jqUnit, expect, jQuery, start*/
+/*global fluid, jqUnit, deepEqual, expect, jQuery, start*/
 
 // JSLint options 
 /*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
 
 (function ($) {
-
-    // $(document).ready(function () {
-    //     var toc;
-    //     var options = {
-    //         components: {
-    //             levels: {
-    //                 options: {
-    //                     resources: {
-    //                         template: {
-    //                             url: "../../../../components/tableOfContents/html/TableOfContents.html"
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     };
-    // 
-    //     var tests = jqUnit.testCase("Table of Contents Tests");
-    //      
-    //     var testAfterRender = function (testFn) {
-    //         var toc;
-    //         
-    //         options.listeners = {
-    //             afterRender: function () {
-    //                 testFn(toc);
-    //                 start();
-    //             }
-    //         };
-    //         
-    //         toc = fluid.tableOfContents("#main", options);
-    //     };
-    //     
-    //     var testTocItem = function (item, name) {
-    //         var a = $("a", item);
-    //         jqUnit.assertEquals(name + " has text", name, a.text());
-    //         jqUnit.assertTrue(name + " has href", a.attr("href").indexOf("#" + name) > -1);            
-    //     };
-    //     
-    //     tests.asyncTest("TOC Creation", function () {
-    //         testAfterRender(function (toc) {
-    //             expect(22);
-    // 
-    //             var tocEl = $("#main").children().eq(0);
-    //             jqUnit.isVisible("Table of contents should be visible", tocEl);
-    //         
-    //             var items = $("li", tocEl);
-    //             jqUnit.assertEquals("10 headings", 10, items.length);
-    //         
-    //             testTocItem(items[0], "Amphibians");
-    //             testTocItem(items[1], "Toads");
-    //             testTocItem(items[2], "Natterjack Toads");
-    //             testTocItem(items[3], "Salamander");
-    //             testTocItem(items[4], "Newt");
-    //             testTocItem(items[5], "Birds");
-    //             testTocItem(items[6], "Anseriformes");
-    //             testTocItem(items[7], "Ducks");
-    //             testTocItem(items[8], "Mammals");
-    //             testTocItem(items[9], "CATT");
-    //         });            
-    //     });
-    //            
-    //     tests.asyncTest("Anchor insertion", function () {
-    //         testAfterRender(function (toc) {
-    //             expect(5);
-    // 
-    //             var anchors = $("a", "#amphibians-div");
-    //             jqUnit.assertEquals("5 headings in the amphibians section", 5, anchors.length);
-    // 
-    //             var anchor = anchors.eq(0);
-    //             jqUnit.assertEquals("Name is Amphibians", "Amphibians", anchor.attr("name"));         
-    //             jqUnit.assertEquals("No text", "", anchor.text());
-    //             jqUnit.assertFalse("No href", !!anchor.attr("href"));
-    //             jqUnit.assertEquals("The next element in the DOM is the heading", "amphibians", anchor.next().prop("id"));
-    //         });
-    //     });
-    // });
 
     fluid.staticEnvironment.demo = fluid.typeTag("fluid.tableOfContentsTest");
     fluid.demands("fluid.tableOfContents.levels", ["fluid.tableOfContents", "fluid.tableOfContentsTest"], {
@@ -114,7 +38,8 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         funcName: 'fluid.tableOfContents.generateGUIDMock'
     });
     
-    var skippedHeadings = {
+    /* TODO: Might want to rename this and "skippedHeadingsForGradualIndentationModel" */
+    var skippedHeadingsForSkippedIndentationModel = {
         headingTags: ["h1", "h6"],
         anchorInfo: [{url: "#h1"}, {url: "#h6"}],
         headingInfo: [
@@ -137,6 +62,26 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
                         }]
                     }]
                 }]
+            }]
+        }]
+    };
+    
+    /* TODO: Might want to rename this and "skippedHeadingsForSkippedIndentationModel" */
+    var skippedHeadingsForGradualIndentationModel = {
+        headingTags: ["h1", "h6"],
+        anchorInfo: [{url: "#h1"}, {url: "#h6"}],
+        headingInfo: [
+            {level: 1, text: "h1", url: "#h1"},
+            {level: 6, text: "h6", url: "#h6"}
+        ],
+        model: [{
+            level: 1, 
+            text: "h1", 
+            url: "#h1",
+            headings: [{
+                level: 2, 
+                text: "h6", 
+                url: "#h6"
             }]
         }]
     };
@@ -184,97 +129,92 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         }]
     };
     
-    var singleLevelTree = {
-        level1: {
-            children: [
-                {
-                    expander: {
-                        type: "fluid.renderer.repeat",
-                        repeatID: "items:",
-                        controlledBy: "headings",
-                        valueAs: "headingValue1",
-                        pathAs: "headingPath1",
-                        tree: {
-                            expander: [
-                                {
-                                    type: "fluid.renderer.condition",
-                                    condition: "{headingValue1}.text",
-                                    trueTree: {
-                                        link: {
-                                            target: "${{headingPath1}.url}",
-                                            linktext: "${{headingPath1}.text}"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            ]
-        }
+    var skippedHeadingsForSkippedIndentationTree = {
+        children: [{   
+            ID: "level1:", 
+            children: [{
+                ID: "items1:",
+                children: [{
+                    ID: "link1",
+                    target: "#h1",
+                    linktext: "h1"
+                }, {
+                    ID: "level2:",
+                    children: [{
+                        ID: "items2:",
+                        decorators: [{
+                            type: "addClass",
+                            classes: "fl-tableOfContents-hide-bullet"
+                        }],
+                        children: [{
+                            ID: "level3:",
+                            children: [{
+                                ID: "items3:",
+                                decorators: [{
+                                    type: "addClass",
+                                    classes: "fl-tableOfContents-hide-bullet"
+                                }],
+                                children: [{
+                                    ID: "level4:",
+                                    children: [{
+                                        ID: "items4:",
+                                        decorators: [{
+                                            type: "addClass",
+                                            classes: "fl-tableOfContents-hide-bullet"
+                                        }],
+                                        children: [{
+                                            ID: "level5:",
+                                            children: [{
+                                                ID: "items5:",
+                                                decorators: [{
+                                                    type: "addClass",
+                                                    classes: "fl-tableOfContents-hide-bullet"
+                                                }],
+                                                children: [{
+                                                    ID: "level6:",
+                                                    children: [{
+                                                        ID: "items6:",
+                                                        children: [{
+                                                            ID: "link6",
+                                                            target: "#h6",
+                                                            linktext: "h6"
+                                                        }]
+                                                    }]
+                                                }]
+                                            }]
+                                        }]
+                                    }]
+                                }]
+                            }]
+                        }]
+                    }]
+                }]
+            }]
+        }]
     };
     
-    var multiLevelTree = {
-        level1: {
-            children: [
-                {
-                    expander: {
-                        type: "fluid.renderer.repeat",
-                        repeatID: "items:",
-                        controlledBy: "headings",
-                        valueAs: "headingValue1",
-                        pathAs: "headingPath1",
-                        tree: {
-                            expander: [
-                                {
-                                    type: "fluid.renderer.condition",
-                                    condition: "{headingValue1}.text",
-                                    trueTree: {
-                                        link: {
-                                            target: "${{headingPath1}.url}",
-                                            linktext: "${{headingPath1}.text}"
-                                        }
-                                    }
-                                },
-                                {
-                                    type: "fluid.renderer.condition",
-                                    condition: "{headingValue1}.headings",
-                                    trueTree: {
-                                        level2: {
-                                            children: [
-                                                {
-                                                    expander: {
-                                                        type: "fluid.renderer.repeat",
-                                                        repeatID: "items:",
-                                                        controlledBy: "{headingPath1}.headings",
-                                                        valueAs: "headingValue2",
-                                                        pathAs: "headingPath2",
-                                                        tree: {
-                                                            expander: [
-                                                                {
-                                                                    type: "fluid.renderer.condition",
-                                                                    condition: "{headingValue2}.text",
-                                                                    trueTree: {
-                                                                        link: {
-                                                                            target: "${{headingPath2}.url}",
-                                                                            linktext: "${{headingPath2}.text}"
-                                                                        }
-                                                                    }
-                                                                }
-                                                            ]
-                                                        }
-                                                    }
-                                                }
-                                            ]
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            ]
-        }
+    var skippedHeadingsForGradualIndentationTree = {
+        children: [{   
+            ID: "level1:", 
+            children: [{
+                ID: "items1:",
+                children: [{
+                    ID: "link1",
+                    target: "#h1",
+                    linktext: "h1"
+                }, {
+                    ID: "level2:",
+                    children: [{
+                        ID: "items2:",
+                        children: [{
+                            ID: "link2",
+                            target: "#h6",
+                            linktext: "h6"
+                        }]
+                    }]
+                }]
+            }]
+        }]
     };
     
     var createElm = function (tagName) {
@@ -285,43 +225,59 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         return fluid.transform(tagArray, createElm);
     };
     
-    var toModelTests = function (headingInfo, expectedModel) {
-        var model = fluid.tableOfContents.modelBuilder.toModel(headingInfo);
-        jqUnit.assertDeepEq("headingInfo converted to model correctly", expectedModel, model);
+    var toModelTests = function (headingInfo, expectedModel, modelLevelFn) {
+        var model = fluid.tableOfContents.modelBuilder.toModel(headingInfo, modelLevelFn);
+        deepEqual(model, expectedModel, "headingInfo converted to toModel correctly");
     };
     
     var convertToHeadingObjectsTests = function (headings, anchorInfo, expectedHeadingInfo) {
         var modelBuilder = fluid.tableOfContents.modelBuilder();
         var headingInfo = modelBuilder.convertToHeadingObjects(headings, anchorInfo);
-        jqUnit.assertDeepEq("Heading objects created correctly", expectedHeadingInfo, headingInfo);
+        deepEqual(headingInfo, expectedHeadingInfo, "Heading objects created correctly");
     };
     
     var assembleModelTests = function (headings, anchorInfo, expectedModel) {
         var modelBuilder = fluid.tableOfContents.modelBuilder();
         var model = modelBuilder.assembleModel(headings, anchorInfo);
-        jqUnit.assertDeepEq("model assembled correctly", expectedModel, model);
+        deepEqual(model, expectedModel, model);
     };
     
-    var generateTreeTests = function (startLevel, endLevel, expectedTree) {
-        var tree = fluid.tableOfContents.levels.generateTree(startLevel, endLevel);
-        jqUnit.assertDeepEq("tree generated correctly", expectedTree, tree);
+    var generateTreeTests = function (model, expectedTree) {
+        model = {headings: model};
+        var tree = fluid.tableOfContents.levels.generateTree(model);
+        deepEqual(tree, expectedTree, "tree generated correctly");
+    };
+    
+    /**
+      * Retrieve a jquery that's associated with all the selectorNames
+      * @param  Array   Array of selector names
+      */
+    var locateSet = function (that, selectorNames) {
+        var set = $();  //Creates an empty jQuery object.
+        fluid.each(selectorNames, function (selectorName) {
+            set = set.add(that.locate(selectorName));
+        });
+        return set;
     };
     
     var renderTOCTest = function (that, testHeadings) {
-        var tocLinks = that.locate("link");
+        var tocLinks = locateSet(that, ["link1", "link2", "link3", "link4", "link5", "link6"]);
         jqUnit.assertEquals("The correct number of links are rendered", testHeadings.headingInfo.length, tocLinks.length);
         fluid.each(tocLinks, function (elm, idx) {
             var hInfo = testHeadings.headingInfo[idx];
             elm = $(elm);
             
             jqUnit.assertEquals("ToC text set correctly", fluid.get(hInfo, "text"), elm.text());
-            jqUnit.assertEquals("ToC anchor set correctly", fluid.get(hInfo, "url"), elm.attr("href"));
+            // To address IE7 problem, http://bugs.jquery.com/ticket/7117
+            // To fix, strip it URI if the windows.location is in href. Otherwise, do nothing.
+            var eleHref = elm.attr("href").replace($(location).attr('href'), '');
+            jqUnit.assertEquals("ToC anchor set correctly", fluid.get(hInfo, "url"), eleHref);
         });
     };
        
     var renderTOCTests = function (testHeadings) {
         var container = $(".flc-toc-tocContainer");
-        var renderedTOC = fluid.tableOfContents.levels(container, {
+        fluid.tableOfContents.levels(container, {
             model: {
                 headings: testHeadings.model
             },
@@ -368,34 +324,93 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         
         // "fluid.tableOfContents.modelBuilder" tests
         
-        tocMBTests.test("toModel: linear headings", function () {toModelTests(linearHeadings.headingInfo, linearHeadings.model);});
-        tocMBTests.test("toModel: skipped headings", function () {toModelTests(skippedHeadings.headingInfo, skippedHeadings.model);});
+        tocMBTests.test("toModel: linear headings with gradual indentation models", function () {
+            toModelTests(linearHeadings.headingInfo, linearHeadings.model, fluid.tableOfContents.modelBuilder.gradualModelLevelFn);
+        });
+        tocMBTests.test("toModel: linear headings with skipped indentation models", function () {
+            toModelTests(linearHeadings.headingInfo, linearHeadings.model, fluid.tableOfContents.modelBuilder.skippedModelLevelFn);
+        });
+        tocMBTests.test("toModel: skipped headings with gradual indentation models", function () {
+            toModelTests(skippedHeadingsForGradualIndentationModel.headingInfo, skippedHeadingsForGradualIndentationModel.model,
+                fluid.tableOfContents.modelBuilder.gradualModelLevelFn);
+        });
+        tocMBTests.test("toModel: skipped headings with skipped indentation models", function () {
+            toModelTests(skippedHeadingsForSkippedIndentationModel.headingInfo, skippedHeadingsForSkippedIndentationModel.model,  
+                fluid.tableOfContents.modelBuilder.skippedModelLevelFn);
+        });
         
         tocMBTests.test("convertToHeadingObjects: linear headings", function () {
             convertToHeadingObjectsTests(createElms(linearHeadings.headingTags), linearHeadings.anchorInfo, linearHeadings.headingInfo);
         });
         tocMBTests.test("convertToHeadingObjects: skipped headings", function () {
-            convertToHeadingObjectsTests(createElms(skippedHeadings.headingTags), skippedHeadings.anchorInfo, skippedHeadings.headingInfo);
+            convertToHeadingObjectsTests(createElms(skippedHeadingsForSkippedIndentationModel.headingTags), 
+                skippedHeadingsForSkippedIndentationModel.anchorInfo, skippedHeadingsForSkippedIndentationModel.headingInfo);
+            convertToHeadingObjectsTests(createElms(skippedHeadingsForGradualIndentationModel.headingTags), 
+                skippedHeadingsForGradualIndentationModel.anchorInfo, skippedHeadingsForGradualIndentationModel.headingInfo);
         });
         
         tocMBTests.test("assembleModel: linear headings", function () {
             assembleModelTests(createElms(linearHeadings.headingTags), linearHeadings.anchorInfo, linearHeadings.model);
         });
         tocMBTests.test("assembleModel: skipped headings", function () {
-            assembleModelTests(createElms(skippedHeadings.headingTags), skippedHeadings.anchorInfo, skippedHeadings.model);
+            // test assembleModel with default toModel invoker - skippedHeadingsForSkippedIndentationModel
+            assembleModelTests(createElms(skippedHeadingsForSkippedIndentationModel.headingTags), 
+                skippedHeadingsForSkippedIndentationModel.anchorInfo, skippedHeadingsForSkippedIndentationModel.model);
         });
+        
+        tocMBTests.test("Test gradualModelLevelFn", function () {
+            var modelLevel = ['level1', 'level2'];
+            var subHeadings = [{level: 6, text: 'h6', url: '#h6'}];
+            var expectedModelLevel = [{level: 5, text: 'h6', url: '#h6'}];
+            
+            var gradualIndentationModel = fluid.tableOfContents.modelBuilder.gradualModelLevelFn(modelLevel, subHeadings);
+            deepEqual(gradualIndentationModel, expectedModelLevel, "gradual indentation model returns the subHeadings with level decremented by exactly 1.");
+            
+            //reference check. The function should not modify the object with the same reference.
+            jqUnit.assertFalse("This function should not modify the level value directly on the object. Returned value should not have the same reference as parameter.", subHeadings === gradualIndentationModel);
+        }); 
+        
+        tocMBTests.test("Test skippedModelLevelFn", function () {
+            var modelLevel = ['level1', 'level2', {headings: ['subHeading1', 'subHeading2']}];
+            var modelLevelClone = fluid.copy(modelLevel);
+            var subHeadings = modelLevelClone.pop();
+            var skippedIndentationModel = fluid.tableOfContents.modelBuilder.skippedModelLevelFn(modelLevelClone, subHeadings.headings);
+            jqUnit.assertDeepEq("skipped indentation model should always return the modelLevel with subHeadings as a child.", modelLevel, skippedIndentationModel);
+        }); 
         
         // "fluid.tableOfContents.levels" tests
         
-        tocLevelsTests.test("generateTree: singleLevelTree", function () {
-            generateTreeTests(1, 1, singleLevelTree);
+        tocLevelsTests.test("generateTree: skipped indentation tree, [h1, '', '', '', '', h6]", function () {
+            generateTreeTests(skippedHeadingsForSkippedIndentationModel.model, skippedHeadingsForSkippedIndentationTree);
         });
-        tocLevelsTests.test("generateTree: multiLevelTree", function () {
-            generateTreeTests(1, 2, multiLevelTree);
+        tocLevelsTests.test("generateTree: gradual indentation tree, [h1, h6]", function () {
+            generateTreeTests(skippedHeadingsForGradualIndentationModel.model, skippedHeadingsForGradualIndentationTree);
         });
         
-        tocLevelsTests.asyncTest("Render toc: linear headings", function () {renderTOCTests(linearHeadings);});
-        tocLevelsTests.asyncTest("Render toc: skipped headings", function () {renderTOCTests(skippedHeadings);});
+        tocLevelsTests.test("objModel: test construction of the levels, items object used by generateTree", function () {
+            var levelObj = fluid.tableOfContents.levels.objModel('level', 1);
+            jqUnit.assertEquals("The last character of the ID should be a ':'", ":", levelObj.ID.substr(levelObj.ID.length - 1));
+            jqUnit.assertEquals("Should create an empty children array", 0, levelObj.children.length);
+        });
+        
+        tocLevelsTests.test("handleEmptyItemObj: Add decorator to item object", function () {
+            var itemObj = {};
+            fluid.tableOfContents.levels.handleEmptyItemObj(itemObj);
+            var decorator = itemObj.decorators[0];
+            jqUnit.assertEquals("Decorator.type is 'addClass'", "addClass", decorator.type);
+            jqUnit.assertEquals("Decorator.classes is 'fl-tableOfContents-hide-bullet'", "fl-tableOfContents-hide-bullet", decorator.classes);
+            
+        });
+        
+        tocLevelsTests.asyncTest("Render toc: linear headings", function () {
+            renderTOCTests(linearHeadings);
+        });
+        tocLevelsTests.asyncTest("Render toc: skipped headings for skipped indentation model", function () {
+            renderTOCTests(skippedHeadingsForSkippedIndentationModel);
+        });
+        tocLevelsTests.asyncTest("Render toc: skipped headings for gradual indentation model", function () {
+            renderTOCTests(skippedHeadingsForGradualIndentationModel);
+        });
 
         // fluid tableOfContents" tests
 
@@ -410,7 +425,7 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
             jqUnit.assertEquals("ToC insert anchor correctly: name", tocTestAnchorName, tocInsertAnchorWrapperFirstChild.attr('name'));
         });
         
-        tocTests.test("generateGUID", function() {
+        tocTests.test("generateGUID", function () {
             var GUID = fluid.tableOfContents.generateGUID('randomBaseName');
             var GUID2 = fluid.tableOfContents.generateGUID('randomBaseName');
             
@@ -418,7 +433,7 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
             jqUnit.assertNotEquals("Basename should remain in the GUID after generated", -1, GUID.indexOf('randomBaseName'));
         });
         
-        tocTests.test("sanitizeID", function() {
+        tocTests.test("sanitizeID", function () {
             var tocTest = function (custom_msg, expected, input) {
                 var actual = fluid.tableOfContents.sanitizeID(input);
                 jqUnit.assertEquals("Test non-word string: " + custom_msg, expected, actual);
@@ -493,19 +508,19 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
             headings.each(function (headingsIndex, headingsInfo) {
                 var currLink = headings.eq(headingsIndex);
                 testHeadings.headingInfo.push(serializeHeading(
-                    currLink.prop('tagName').substr(-1), 
+                    currLink.prop('tagName').substr(currLink.prop('tagName').length - 1), 
                     currLink.text(), 
                     '#test' + fluid.tableOfContents.sanitizeID(currLink.text())
                 ));
             });
-            var tocComponent = renderTOCComponent({
+            renderTOCComponent({
                 listeners: {
                     afterRender: function (that) {
                         renderTOCTest(that, testHeadings);
-                        renderTOCAnchorTest();
+                        renderTOCAnchorTest();                        
                         start();
                     }
-                },
+                }
             });
             
             /*

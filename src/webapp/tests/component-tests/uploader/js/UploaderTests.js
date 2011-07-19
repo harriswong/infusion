@@ -1,7 +1,7 @@
 /*
 Copyright 2008-2009 University of Toronto
 Copyright 2008-2009 University of California, Berkeley
-Copyright 2010 OCAD University
+Copyright 2010-2011 OCAD University
 
 Licensed under the Educational Community License (ECL), Version 2.0 or the New
 BSD license. You may not use this file except in compliance with one these
@@ -12,7 +12,7 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 */
 
 // Declare dependencies
-/*global fluid, jqUnit, jQuery*/
+/*global fluid, jqUnit, jQuery, start*/
 
 // JSLint options 
 /*jslint white: true, funcinvoke: true, undef: true, newcap: true, nomen: true, regexp: true, bitwise: true, browser: true, forin: true, maxerr: 100, indent: 4 */
@@ -20,7 +20,15 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
 (function ($) {
     $(document).ready(function () {
         var uploaderTests = new jqUnit.TestCase("Uploader Basic Tests");
-        
+        var mountainTestFile = {
+                fileName : "Mountain.jpg", // The file name. The path is not included. 
+                size : 400000 // The file size in bytes     
+            };            
+        var oceanTestFile = {
+            fileName : "Ocean.jpg", // The file name. The path is not included. 
+            size : 950000000 // The file size in bytes        
+        };
+
         fluid.staticEnvironment.uploader = fluid.typeTag("fluid.uploader.tests");
         
         var container = ".flc-uploader";
@@ -133,8 +141,8 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
                                 "", status.text());
             
             checkStatusAfterFiringEvent("cat", "afterFileDialog");
-            checkStatusAfterFiringEvent("dog", "afterFileRemoved");       
-            checkStatusAfterFiringEvent("shark", "afterUploadComplete");           
+            checkStatusAfterFiringEvent("dog", "afterFileRemoved");
+            checkStatusAfterFiringEvent("shark", "afterUploadComplete");
         });
         
         /*************************************************************
@@ -166,7 +174,7 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         fluid.tests.uploader.noIoC = function (options) {
             var that = fluid.uploader(".flc-uploader", options);
             return that;
-        }
+        };
         
         /*
          * Instantiate an uploader as a subcomponent 
@@ -332,9 +340,9 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
             jqUnit.assertTrue("The uploader must have an argument map in its options", uploader.options.argumentMap);
         };
         
-        var checkUploaderButton = function(uploader, buttonName, state) {
+        var checkUploaderButton = function (uploader, buttonName, state) {
             var button = uploader.locate(buttonName);
-            jqUnit.assertEquals("The " + buttonName + " is " + (state? "enabled" : "disabled"), state, !button.prop("disabled"));
+            jqUnit.assertEquals("The " + buttonName + " is " + (state ? "enabled" : "disabled"), state, !button.prop("disabled"));
         };
         
         var checkUploaderArgumentMap = function (uploader, expectedLocal, expectedRemote) {
@@ -398,16 +406,17 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
             start();
         };        
         
-        var configurations = [ {
-            label: "Uploader with direct creator function",
-            type: fluid.tests.uploader.noIoC
-        }, {
-            label: "Uploader in an IoC tree",
-            type: fluid.tests.uploader.parent
-        },  {
-            label: "Uploader in an IoC tree with demands",
-            type: fluid.tests.uploader.parent.loadDemands
-        }
+        var configurations = [
+            {
+                label: "Uploader with direct creator function",
+                type: fluid.tests.uploader.noIoC
+            }, {
+                label: "Uploader in an IoC tree",
+                type: fluid.tests.uploader.parent
+            },  {
+                label: "Uploader in an IoC tree with demands",
+                type: fluid.tests.uploader.parent.loadDemands
+            }
         ];
         
         var integrations = [
@@ -457,7 +466,8 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
             
             if (integration.uploaderConfig) {
                 fluid.staticEnvironment.uploaderConfig = fluid.progressiveCheckerForComponent({
-                        componentName: integration.uploaderConfig.componentName});
+                    componentName: integration.uploaderConfig.componentName
+                });
             }
             if (integration.demoRemote) {
                 fluid.staticEnvironment.demo = fluid.typeTag(integration.demoRemote.typeName);

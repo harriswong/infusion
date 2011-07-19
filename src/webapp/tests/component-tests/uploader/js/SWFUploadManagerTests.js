@@ -1,6 +1,6 @@
 /*
 Copyright 2008-2009 University of Toronto
-Copyright 2010 OCAD University
+Copyright 2010-2011 OCAD University
 
 Licensed under the Educational Community License (ECL), Version 2.0 or the New
 BSD license. You may not use this file except in compliance with one these
@@ -28,6 +28,7 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         var container = $("#uploaderContainer");
         var button = $("#browseButton");
         var flashContainer = $("#flashContainer");
+        var progressBar = $("#totalProgress");
         var styles = fluid.defaults("fluid.uploader.swfUploadStrategy").styles;
         var defaultQueueSettings = fluid.defaults("fluid.uploader.multiFileUploader").queueSettings;
         var defaultFlashSettings = fluid.defaults("fluid.uploader.swfUploadStrategy").flashMovieSettings;
@@ -37,13 +38,13 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
         var swfUploadSetupTests = new jqUnit.TestCase("SWFUpload for Flash 9 & 10 Setup Tests");
         
         swfUploadSetupTests.test("SWFUpload Flash 10 callFlash() should be unavailable.", function () {
-            fluid.uploader.swfUploadStrategy.flash10SetupDOM(container, button, styles);
+            fluid.uploader.swfUploadStrategy.flash10SetupDOM(container, button, progressBar, styles);
             jqUnit.assertNotEquals("The Flash 9-compatible version of callFlash() should not be in place.",
                                    SWFUpload.callFlash_Flash9Compatibility, SWFUpload.prototype.callFlash);
         });
         
         swfUploadSetupTests.test("SWFUpload Flash 10 accessibility", function () {
-            fluid.uploader.swfUploadStrategy.flash10SetupDOM(container, button, styles);
+            fluid.uploader.swfUploadStrategy.flash10SetupDOM(container, button,  progressBar, styles);
             jqUnit.assertEquals("The HTML browse button should have been given a tabindex of -1",
                                 "-1", button.attr("tabindex"));
         });
@@ -128,7 +129,11 @@ https://github.com/fluid-project/infusion/raw/master/Infusion-LICENSE.txt
                     flashContainer, 
                     button);
             var convertedConfig = fluid.uploader.swfUploadStrategy.convertConfigForSWFUpload(
-                    flashContainer, config, events, defaultQueueSettings);
+                    flashContainer,
+                    config,
+                    events,
+                    defaultQueueSettings
+                );
             jqUnit.assertEquals("The converted accepted fileType is", convertedFileTypes, convertedConfig.file_types);            
         };
         

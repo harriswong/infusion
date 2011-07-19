@@ -1,6 +1,4 @@
 /*
-Copyright 2008-2009 University of Cambridge
-Copyright 2008-2009 University of Toronto
 Copyright 2011 OCAD University
 
 Licensed under the Educational Community License (ECL), Version 2.0 or the New
@@ -48,14 +46,18 @@ var fluid_1_4 = fluid_1_4 || {};
         invokers: {
             fetch: {
                 funcName: "fluid.cookieStore.fetch",
-                args: ["{cookieStore}.options.cookieName", "{cookieStore}.options.defaultSiteSettings"]
+                args: ["{cookieStore}.options.cookie.name", "{cookieStore}.options.defaultSiteSettings"]
             },
             save: {
                 funcName: "fluid.cookieStore.save",
-                args: ["{arguments}.0", "{cookieStore}.options.cookieName"]
+                args: ["{arguments}.0", "{cookieStore}.options.cookie"]
             }
         },
-        cookieName: "fluid-ui-settings"
+        cookie: {
+            name: "fluid-ui-settings",
+            path: "/",
+            expires: ""
+        }
     });
 
     /**
@@ -80,13 +82,33 @@ var fluid_1_4 = fluid_1_4 || {};
         
         return retObj || defaults;
     };
+    
+    /**
+     * Assembles the cookie string
+     * @param {Object} cookie settings
+     */
+    fluid.cookieStore.assembleCookie = function (cookieOptions) {
+        var cookieStr = cookieOptions.name + "=" + cookieOptions.data;
+        
+        if (cookieOptions.expires) {
+            cookieStr += "; expires=" + cookieOptions.expires;
+        }
+        
+        if (cookieOptions.path) {
+            cookieStr += "; path=" + cookieOptions.path;
+        }
+        
+        return cookieStr;
+    };
 
     /**
      * Saves the settings into a cookie
      * @param {Object} settings
+     * @param {Object} cookieOptions
      */
-    fluid.cookieStore.save = function (settings, cookieName) {
-        document.cookie = cookieName + "=" +  encodeURIComponent(JSON.stringify(settings));
+    fluid.cookieStore.save = function (settings, cookieOptions) {
+        cookieOptions.data = encodeURIComponent(JSON.stringify(settings));
+        document.cookie = fluid.cookieStore.assembleCookie(cookieOptions);
     };
     
 
