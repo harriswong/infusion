@@ -400,6 +400,7 @@ var fluid_1_4 = fluid_1_4 || {};
             
             var savedSelections = fluid.copy(that.model.selections);
             that.settingsStore.save(savedSelections);
+            that.events.onUIOptionsRefresh.fire();
         };
 
         /**
@@ -428,6 +429,7 @@ var fluid_1_4 = fluid_1_4 || {};
          */
         that.updateModel = function (newModel) {
             that.applier.requestChange("selections", newModel);
+            that.events.onUIOptionsRefresh.fire();
         };
         
         that.applier.modelChanged.addListener("selections",
